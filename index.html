@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>池塘 · Pond</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #06121c; }
+  body {
+    font-family: 'Songti SC', 'Noto Serif SC', 'STSong', Georgia, serif;
+    color: #eef4f2;
+    -webkit-font-smoothing: antialiased;
+    cursor: none;
+  }
+  #pond { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+  /* ---------- 通用文字层 ---------- */
+  .veil-text {
+    position: fixed; left: 50%; top: 58%; transform: translateX(-50%);
+    width: min(720px, 86vw); text-align: center;
+    font-size: 17px; letter-spacing: .22em; line-height: 2.3;
+    color: rgba(238, 244, 242, .82);
+    text-shadow: 0 0 18px rgba(120, 180, 200, .35);
+    opacity: 0; transition: opacity 1.6s ease;
+    pointer-events: none; z-index: 20;
+  }
+  .veil-text.show { opacity: 1; }
+  .veil-text .en {
+    display: block; margin-top: 10px;
+    font-size: 11px; letter-spacing: .5em; opacity: .5;
+  }
+
+  /* ---------- 封面 ---------- */
+  #title-screen {
+    position: fixed; inset: 0; z-index: 40;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 2.4s ease; pointer-events: none;
+  }
+  #title-screen.show { opacity: 1; pointer-events: auto; }
+  #title-screen.gone { opacity: 0; pointer-events: none; }
+  #title-main {
+    font-size: clamp(38px, 6.4vw, 76px);
+    letter-spacing: .34em; text-indent: .34em;
+    font-weight: 400;
+    color: rgba(240, 247, 245, .96);
+    text-shadow: 0 0 40px rgba(150, 210, 230, .4), 0 2px 30px rgba(0, 20, 40, .5);
+    opacity: 0; transform: translateY(14px);
+    transition: opacity 3.2s ease, transform 3.2s ease;
+  }
+  #title-screen.show #title-main { opacity: 1; transform: none; }
+  #title-en {
+    margin-top: 26px;
+    font-size: 12px; letter-spacing: .78em; text-indent: .78em;
+    color: rgba(220, 236, 240, .55);
+    opacity: 0; transition: opacity 3s ease 1.2s;
+  }
+  #title-screen.show #title-en { opacity: 1; }
+  #title-hint {
+    margin-top: 12vh;
+    font-size: 15px; letter-spacing: .5em; text-indent: .5em;
+    color: rgba(230, 242, 240, .6);
+    animation: breathe 4.2s ease-in-out infinite;
+    opacity: 0; transition: opacity 2.6s ease 2.2s;
+  }
+  #title-screen.show #title-hint { opacity: 1; }
+  #title-continue {
+    margin-top: 18px;
+    font-size: 12.5px; letter-spacing: .4em;
+    color: rgba(210, 232, 235, .45);
+    cursor: pointer; opacity: 0; transition: opacity 2.6s ease 2.8s;
+  }
+  #title-screen.show #title-continue { opacity: 1; }
+  #title-continue:hover { color: rgba(240, 250, 248, .8); }
+  @keyframes breathe { 0%,100% { opacity: .3; } 50% { opacity: .85; } }
+
+  /* ---------- 章节标题（左下角，克制） ---------- */
+  #chapter-tag {
+    position: fixed; left: 46px; bottom: 40px; z-index: 15;
+    opacity: 0; transition: opacity 2.2s ease;
+    pointer-events: none; text-align: left;
+  }
+  #chapter-tag.show { opacity: 1; }
+  #chapter-tag .num {
+    font-size: 13px; letter-spacing: .6em; color: rgba(230, 244, 240, .5);
+  }
+  #chapter-tag .name {
+    margin-top: 6px; font-size: 26px; letter-spacing: .42em;
+    color: rgba(238, 246, 244, .85);
+  }
+  #chapter-tag .en {
+    margin-top: 5px; font-size: 10.5px; letter-spacing: .56em;
+    color: rgba(225, 240, 240, .38);
+  }
+
+  /* ---------- 鱼鳞生命 ---------- */
+  #scales {
+    position: fixed; right: 44px; bottom: 40px; z-index: 15;
+    display: flex; gap: 9px; opacity: 0; transition: opacity 1.8s ease;
+    pointer-events: none;
+  }
+  #scales.show { opacity: 1; }
+  #scales svg { width: 21px; height: 21px; transition: opacity 1.2s ease, transform 1.2s ease; }
+  #scales svg.broken { opacity: .12; transform: rotate(38deg) scale(.8); }
+
+  /* ---------- 收集圆点 ---------- */
+  #dots {
+    position: fixed; left: 46px; top: 40px; z-index: 15;
+    display: flex; gap: 10px; opacity: 0; transition: opacity 1.8s ease;
+    pointer-events: none;
+  }
+  #dots.show { opacity: 1; }
+  #dots i {
+    width: 7px; height: 7px; border-radius: 50%;
+    border: 1px solid rgba(230, 242, 240, .4);
+    transition: background 1.4s ease, box-shadow 1.4s ease;
+  }
+  #dots i.lit {
+    background: rgba(238, 246, 240, .9);
+    box-shadow: 0 0 12px rgba(240, 248, 240, .8);
+    border-color: transparent;
+  }
+
+  /* ---------- 过场层 ---------- */
+  #transition {
+    position: fixed; inset: 0; z-index: 50;
+    background: #04101a;
+    opacity: 0; transition: opacity 1.6s ease;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  #transition.show { opacity: 1; }
+  #transition .tr-text {
+    width: min(680px, 84vw); text-align: center;
+    font-size: 16px; letter-spacing: .3em; line-height: 2.4;
+    color: rgba(232, 242, 240, .78);
+    white-space: pre-line;
+  }
+
+  /* ---------- 提示文字（松开鼠标等） ---------- */
+  #whisper {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    z-index: 22; font-size: 23px; letter-spacing: .48em; text-indent: .48em;
+    color: rgba(244, 250, 248, .92);
+    text-shadow: 0 0 26px rgba(180, 225, 235, .5);
+    opacity: 0; transition: opacity 1.6s ease;
+    pointer-events: none; white-space: pre-line; line-height: 2.6;
+  }
+  #whisper.show { opacity: 1; animation: whisper-breathe 3.6s ease-in-out infinite; }
+  @keyframes whisper-breathe { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
+
+  /* ---------- 结尾选项 ---------- */
+  #end-choices {
+    position: fixed; left: 50%; bottom: 12vh; transform: translateX(-50%);
+    z-index: 46; display: flex; gap: 64px;
+    opacity: 0; transition: opacity 2.2s ease; pointer-events: none;
+  }
+  #end-choices.show { opacity: 1; pointer-events: auto; }
+  #end-choices button {
+    font: inherit; background: none; border: none; cursor: none;
+    font-size: 15px; letter-spacing: .5em; text-indent: .5em;
+    color: rgba(24, 58, 68, 0.72);
+    text-shadow: 0 1px 10px rgba(255, 255, 255, 0.55);
+    border-bottom: 1px solid rgba(24, 58, 68, 0.3);
+    padding: 8px 6px;
+    transition: color 1s ease, border-color 1s ease;
+  }
+  #end-choices button:hover { color: rgba(12, 34, 42, 0.95); border-color: rgba(12, 34, 42, 0.6); }
+
+  /* ---------- 光标替代：极淡光点 ---------- */
+  #cursor-dot {
+    position: fixed; z-index: 70; width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(235, 248, 246, .5);
+    box-shadow: 0 0 14px rgba(200, 240, 235, .5);
+    pointer-events: none; transform: translate(-50%, -50%);
+    opacity: 0; transition: opacity 1s ease;
+  }
+  #cursor-dot.show { opacity: 1; }
+
+  @media (max-width: 900px) {
+    #chapter-tag { left: 24px; bottom: 24px; }
+    #chapter-tag .name { font-size: 20px; }
+    #scales { right: 24px; bottom: 24px; }
+    #dots { left: 24px; top: 24px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="pond"></canvas>
+
+<div id="title-screen">
+  <div id="title-main">池 塘</div>
+  <div id="title-en">P O N D</div>
+  <div id="title-hint">点击水面，游进去</div>
+  <div id="title-continue"></div>
+</div>
+
+<div id="chapter-tag">
+  <div class="num"></div>
+  <div class="name"></div>
+  <div class="en"></div>
+</div>
+
+<div id="scales"></div>
+<div id="dots"></div>
+<div id="transition"><div class="tr-text"></div></div>
+<div id="whisper"></div>
+<div id="end-choices">
+  <button id="btn-replay">再游一次</button>
+  <button id="btn-pond">回到池塘</button>
+</div>
+<div id="cursor-dot"></div>
+
+<script src="js/audio.js"></script>
+<script src="js/world.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
