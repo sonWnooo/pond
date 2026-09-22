@@ -376,6 +376,8 @@
           f.alive = false; this.eaten++;
           AudioSys.eat(); G.ripple(f.x, f.y, 0.45);
           G.fish.size = Math.min(0.9, 0.55 + this.eaten * 0.03);
+          if (this.eaten === 1) whisper('这些发光的东西是什么，尝尝看吧', 4400);
+          if (this.eaten === 6) whisper('好像在慢慢长大...', 4200);
           setTimeout(() => { const arr = G.world.foods; const idx = arr.indexOf(f); if (idx >= 0) arr.splice(idx, 1); }, 100);
           G.spawnFood(1);
           break;
@@ -385,6 +387,7 @@
       if (this.eaten >= 12 && !this.buddy) {
         this.buddy = makeBuddy(G.fish.x + 700, G.fish.y - 420);
         G.buddy = this.buddy;
+        whisper('它是谁？要去打个招呼吗...', 4600);
       }
       if (this.buddy) {
         const b = this.buddy, f = G.fish;
@@ -467,7 +470,7 @@
         if (dist(f.x, f.y, b.x, b.y) < 250) this.followAcc += dt;
         if (this.followAcc > 10) {
           this.stage = 'hide'; this.hideT = 0;
-          whisper('它藏起来了。水草动的地方……', 4600);
+          whisper('找到它', 2400);
           // 伙伴游向藏身水草
           const target = this.hideWeeds[this.correct];
           this.hideSpot = { x: target.x, y: target.y };
@@ -475,6 +478,10 @@
       } else if (this.stage === 'hide') {
         controlFish(dt, 1, 240);
         this.hideT += dt;
+        if (this.hideT > 1.8 && !this.hintWeed) {
+          this.hintWeed = true;
+          whisper('会动的水草里，有它。', 4400);
+        }
         if (this.hideT < 2.4) {
           swimBuddy(b, dt, this.hideSpot.x, this.hideSpot.y, 190);
         } else {
@@ -582,6 +589,7 @@
 
       if (this.phase === 'chase') {
         const t = this.t;
+        if (t > 5.5 && !this.fearMsg) { this.fearMsg = true; whisper('要一直跑吗...有点害怕....', 4800); }
         let sp = 152, pred = 0, turn = 1.5;
         if (t > 15) { sp = 178; pred = 0.85; turn = 1.8; }
         if (t > 32) { sp = 218; pred = 1.15; turn = 2.3; }
@@ -910,22 +918,25 @@
       }
       if (this.released && !this.free) {
         this.free = true;
+        this.freeT = 0;
+        this.e1 = this.e2 = this.e3 = this.e4 = false;
         whisperEl.classList.remove('show');
         AudioSys.chime();
-        // 巡游路线：荷叶 → 鸭群 → 与大鱼相会 → 伙伴 → 池塘边缘
+        // 巡游路线：荷叶 → 鸭群 → 与大鱼相会 → 伙伴 → 回到池塘中心
         this.route = [
           { x: 900, y: 380 }, { x: 430, y: 620 }, { x: 1150, y: 560 },
-          { x: 760, y: 830 }, { x: 1950, y: 640 },
+          { x: 760, y: 830 }, { x: 1520, y: 460 }, { x: 1000, y: 620 },
         ];
         // 大鱼安静地横穿
         this.big = makeBigFish(-200, 520); this.big.dir = 0;
         G.bigfish = this.big;
       }
       if (this.free) {
+        this.freeT += dt;
         const wp = this.route[this.autoIdx];
         if (wp) {
           autoSwim(dt, wp.x, wp.y, 62);
-          if (dist(f.x, f.y, wp.x, wp.y) < 70) this.autoIdx++;
+          if (dist(f.x, f.y, wp.x, wp.y) < 70) this.autoIdx = (this.autoIdx + 1) % this.route.length;
         } else {
           autoSwim(dt, f.x + 200, f.y, 55);
         }
@@ -942,7 +953,12 @@
           swimBuddy(this.buddy, dt, f.x + 120, f.y - 60, 62);
           if (this.autoIdx >= 4) swimBuddy(this.buddy, dt, this.buddy.x + 200, this.buddy.y - 300, 96);
         }
-        if (f.x > 1930) {
+        // 松手 5.2 秒后：结束文字一句一句浮现，小鱼仍在自由游动
+        if (!this.e1 && this.freeT > 5.2) { this.e1 = true; whisper('池塘一直都在。', 4600); }
+        if (!this.e2 && this.freeT > 10.4) { this.e2 = true; whisper('而我只是其中一个来去的过客。', 5000); }
+        if (!this.e3 && this.freeT > 16) { this.e3 = true; whisper('穿梭于水面与水底，\n穿梭于相遇与离开。', 5400); }
+        if (!this.e4 && this.freeT > 21.8) { this.e4 = true; whisper('我不知道要游向哪里。\n但我仍然自由。', 5600); }
+        if (this.freeT > 28.6) {
           saveChapter(6);
           gotoState('ENDING');
         }
@@ -984,24 +1000,18 @@
     update(dt) {
       this.t += dt;
       const f = G.fish;
-      // 自由巡游：文字浮现的同时，小鱼自己探索
+      // 自由巡游：总结文字已在第六章播完，这里只有 THE END 与循环的暗示
       const wp = this.route[this.autoIdx];
-      autoSwim(dt, wp.x, wp.y, 52);
+      autoSwim(dt, wp.x, wp.y, 48);
       if (dist(f.x, f.y, wp.x, wp.y) < 60) this.autoIdx = (this.autoIdx + 1) % this.route.length;
       G.updateWorld(dt, f);
 
-      if (this.stage === 0 && this.t > 2) {
+      if (this.stage === 0 && this.t > 0.8) {
         this.stage = 1;
-        whisper('池塘一直都在。', 4600);
+        whisper('THE END', 5000);
+        AudioSys.chime();
       }
-      if (this.stage === 1) {
-        // 一句一句地浮现
-        if (!this.l2 && this.t > 7) { this.l2 = true; whisper('而我只是其中一个来去的过客。', 5000); }
-        if (!this.l3 && this.t > 12.4) { this.l3 = true; whisper('穿梭于水面与水底，\n穿梭于相遇与离开。', 5400); }
-        if (!this.l4 && this.t > 18.2) { this.l4 = true; whisper('我不知道要游向哪里。\n但我仍然自由。', 5600); }
-        if (this.t > 24.4) { this.stage = 2; whisper('THE END', 5000); AudioSys.chime(); }
-      }
-      if (this.stage === 2 && this.t > 29.6) {
+      if (this.stage === 1 && this.t > 6.4) {
         if (this.secret && !this.secretDone) {
           this.stage = 'secret'; this.secretT = 0; this.secretDone = true;
           this.secretFish = makeFish(f.x + rand(-60, 60), G.H - 50, 0.5);
@@ -1074,8 +1084,18 @@
      启动与主循环
      ============================================================ */
   function resize() {
-    vw = canvas.width = window.innerWidth;
-    vh = canvas.height = window.innerHeight;
+    // 按设备像素比渲染（上限 2）：渐变更平滑，手机上不出色带
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    vw = window.innerWidth;
+    vh = window.innerHeight;
+    canvas.width = vw * dpr;
+    canvas.height = vh * dpr;
+    canvas.style.width = vw + 'px';
+    canvas.style.height = vh + 'px';
+    G.DPR = dpr;
+    // 触摸屏 / 窄屏：光柱与天光减半，避免高亮屏上刺眼
+    const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    G.raySoft = coarse || vw < 720 ? 0.4 : 1;
     scale = Math.max(vw / G.W, vh / G.H);
   }
   window.addEventListener('resize', resize);
@@ -1110,6 +1130,7 @@
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     G.mouse.spd *= 0.86;
+    ctx.setTransform(G.DPR || 1, 0, 0, G.DPR || 1, 0, 0);
     try {
       if (S.update) S.update(dt);
     } catch (e) { window.__gameErr = window.__gameErr || ('update: ' + (e.stack || e.message)); }

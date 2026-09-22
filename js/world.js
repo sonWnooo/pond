@@ -384,13 +384,15 @@
     }
     ctx.globalAlpha = 1;
     // 从上方洒落的光柱：径向渐变椭圆压出柔边，青白色，缓慢游移
+    // 手机/触摸屏上亮度自动减半，避免高亮屏上过于刺眼
+    const soft = G.raySoft ?? 1;
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < 4; i++) {
       const bx = ((i * 0.24 + 0.08) + Math.sin(W.t * 0.05 + i * 1.7) * 0.05) * vw;
       const rw = vw * (0.07 + (i % 2) * 0.035);
       const len = vh * (1.15 + (i % 2) * 0.25);
       const tilt = 0.16 + Math.sin(W.t * 0.04 + i) * 0.05;
-      const a = (0.10 + 0.05 * (Math.sin(W.t * 0.3 + i * 2.1) * 0.5 + 0.5)) * clamp(pal.caustic * 2, 0.3, 1);
+      const a = (0.10 + 0.05 * (Math.sin(W.t * 0.3 + i * 2.1) * 0.5 + 0.5)) * clamp(pal.caustic * 2, 0.3, 1) * soft;
       ctx.save();
       ctx.translate(bx + rw / 2, -vh * 0.05);
       ctx.rotate(tilt);
@@ -405,7 +407,7 @@
     }
     // 水面天光：顶部一层淡淡的青白亮意
     const surf = ctx.createLinearGradient(0, 0, 0, vh * 0.4);
-    surf.addColorStop(0, `rgba(196,240,228,${0.16 * pal.caustic * 2})`);
+    surf.addColorStop(0, `rgba(196,240,228,${0.16 * pal.caustic * 2 * soft})`);
     surf.addColorStop(1, 'rgba(196,240,228,0)');
     ctx.fillStyle = surf;
     ctx.fillRect(0, 0, vw, vh * 0.4);
